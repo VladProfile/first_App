@@ -12,25 +12,40 @@ jobs:
         distribution: 'zulu'
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v4
-    - name: Find and Build Project
+    - name: Ultimate Find and Build
       run: |
-        # Этот шаг автоматически найдет папку, где лежит settings.gradle
-        TARGET_DIR=$(find . -name "settings.gradle" -o -name "settings.gradle.kts" | head -n 1 | xargs dirname)
-        if [ -z "$TARGET_DIR" ]; then
-          echo "ОШИБКА: Файл settings.gradle не найден вообще ни в одной папке репозитория!"
+        # Ищем build.gradle по всему репозиторию на любую глубину
+        BUILD_FILE=$(find . -name "build.gradle" -o -name "build.gradle.kts" | head -n 1)
+        if [ -z "$BUILD_FILE" ]; then
+          echo "ОШИБКА: Файл build.gradle не найден! Проверь, загрузил ли ты его с ноутбука."
           exit 1
         fi
+        
+        # Переходим в папку, где нашелся build.gradle
+        TARGET_DIR=$(dirname "$BUILD_FILE")
         echo "Проект обнаружен в папке: $TARGET_DIR"
         cd "$TARGET_DIR"
         
-        # Генерируем запускальщик и собираем APK
+        # Если в этой папке нет settings.gradle, создадим пустой, чтобы Gradle не ругался
+        if [ ! -f "settings.gradle" ] && [ ! -f "settings.gradle.kts" ]; then
+          echo "Создаем временный settings.gradle"
+          echo "include ':app'" > settings.gradle
+        fi
+        
+        # Запускаем генерацию и сборку
         gradle wrapper
         chmod +x gradlew
         ./gradlew assembleDebug
         
-        # Переносим готовый APK в корень, чтобы его было легко выгрузить
+        # Копируем готовый APK в общую папку для выгрузки
         mkdir -p $GITHUB_WORKSPACE/output_apk
-        cp $(find . -name "*.apk" | head -n 1) $GITHUB_WORKSPACE/output_apk/app-debug.apk
+        APK_PATH=$(find . -name "*.apk" | head -n 1)
+        if [ -n "$APK_PATH" ]; then
+          cp "$APK_PATH" $GITHUB_WORKSPACE/output_apk/app-debug.apk
+        else
+          echo "ОШИБКА: APK файл не скомпилировался."
+          exit 1
+        fi
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:

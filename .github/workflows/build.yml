@@ -13,6 +13,7 @@ jobs:
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v4
     - name: Build APK
+      working-directory: ./MyApp
       run: |
         gradle wrapper
         chmod +x gradlew
@@ -21,4 +22,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: my-app-apk
-        path: app/build/outputs/apk/debug/app-debug.apk
+        path: ./MyApp/app/build/outputs/apk/debug/app-debug.apk

@@ -1,49 +1,21 @@
-name: Android Build
-on: [push, workflow_dispatch]
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - name: set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'zulu'
-    - name: Setup Gradle
-      uses: gradle/actions/setup-gradle@v4
-    - name: Force Fix and Build
-      run: |
-        # Ищем папку проекта
-        BUILD_FILE=$(find . -name "build.gradle" -o -name "build.gradle.kts" | head -n 1)
-        TARGET_DIR=$(dirname "$BUILD_FILE")
-        cd "$TARGET_DIR"
-        
-        # Полностью перезаписываем манифест железным кодом без риска поломать двоеточия
-        cat << 'EOF' > app/src/main/AndroidManifest.xml
-        <?xml version="1.0" encoding="utf-8"?>
-        <manifest xmlns:android="http://android.com">
-            <application android:allowBackup="true" android:supportsRtl="true">
-                <activity android:name="com.myapp.MainActivity" android:exported="true">
-                    <intent-filter>
-                        <action android:name="android.intent.action.MAIN" />
-                        <category android:name="android.intent.category.LAUNCHER" />
-                    </intent-filter>
-                </activity>
-            </application>
-        </manifest>
-        EOF
-        
-        # Генерируем wrapper и запускаем компиляцию APK
-        gradle wrapper
-        chmod +x gradlew
-        ./gradlew assembleDebug
-        
-        # Сохраняем готовый файл
-        mkdir -p $GITHUB_WORKSPACE/output_apk
-        cp $(find . -name "*.apk" | head -n 1) $GITHUB_WORKSPACE/output_apk/app-debug.apk
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: my-app-apk
-        path: output_apk/app-debug.apk
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.myapp">
+
+    <application
+        android:allowBackup="true"
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true">
+
+        <activity android:name=".MainActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+    </application>
+
+</manifest>

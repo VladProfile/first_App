@@ -12,40 +12,24 @@ jobs:
         distribution: 'zulu'
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v4
-    - name: Ultimate Find and Build
+    - name: Force Fix and Build
       run: |
-        # Ищем build.gradle по всему репозиторию на любую глубину
+        # Ищем папку проекта
         BUILD_FILE=$(find . -name "build.gradle" -o -name "build.gradle.kts" | head -n 1)
-        if [ -z "$BUILD_FILE" ]; then
-          echo "ОШИБКА: Файл build.gradle не найден! Проверь, загрузил ли ты его с ноутбука."
-          exit 1
-        fi
-        
-        # Переходим в папку, где нашелся build.gradle
         TARGET_DIR=$(dirname "$BUILD_FILE")
-        echo "Проект обнаружен в папке: $TARGET_DIR"
         cd "$TARGET_DIR"
         
-        # Если в этой папке нет settings.gradle, создадим пустой, чтобы Gradle не ругался
-        if [ ! -f "settings.gradle" ] && [ ! -f "settings.gradle.kts" ]; then
-          echo "Создаем временный settings.gradle"
-          echo "include ':app'" > settings.gradle
-        fi
+        # Жесткая запись манифеста в одну строку без отступов и скрытых символов
+        echo '<?xml version="1.0" encoding="utf-8"?><manifest xmlns:android="http://android.com"><application android:allowBackup="true" android:supportsRtl="true"><activity android:name="com.myapp.MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent-filter></activity></application></manifest>' > app/src/main/AndroidManifest.xml
         
-        # Запускаем генерацию и сборку
+        # Генерируем wrapper и запускаем компиляцию APK
         gradle wrapper
         chmod +x gradlew
         ./gradlew assembleDebug
         
-        # Копируем готовый APK в общую папку для выгрузки
+        # Сохраняем готовый файл
         mkdir -p $GITHUB_WORKSPACE/output_apk
-        APK_PATH=$(find . -name "*.apk" | head -n 1)
-        if [ -n "$APK_PATH" ]; then
-          cp "$APK_PATH" $GITHUB_WORKSPACE/output_apk/app-debug.apk
-        else
-          echo "ОШИБКА: APK файл не скомпилировался."
-          exit 1
-        fi
+        cp $(find . -name "*.apk" | head -n 1) $GITHUB_WORKSPACE/output_apk/app-debug.apk
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:

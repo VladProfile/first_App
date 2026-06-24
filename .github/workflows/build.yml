@@ -12,14 +12,27 @@ jobs:
         distribution: 'zulu'
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v4
-    - name: Build APK
-      working-directory: ./MyApp
+    - name: Find and Build Project
       run: |
+        # Этот шаг автоматически найдет папку, где лежит settings.gradle
+        TARGET_DIR=$(find . -name "settings.gradle" -o -name "settings.gradle.kts" | head -n 1 | xargs dirname)
+        if [ -z "$TARGET_DIR" ]; then
+          echo "ОШИБКА: Файл settings.gradle не найден вообще ни в одной папке репозитория!"
+          exit 1
+        fi
+        echo "Проект обнаружен в папке: $TARGET_DIR"
+        cd "$TARGET_DIR"
+        
+        # Генерируем запускальщик и собираем APK
         gradle wrapper
         chmod +x gradlew
         ./gradlew assembleDebug
+        
+        # Переносим готовый APK в корень, чтобы его было легко выгрузить
+        mkdir -p $GITHUB_WORKSPACE/output_apk
+        cp $(find . -name "*.apk" | head -n 1) $GITHUB_WORKSPACE/output_apk/app-debug.apk
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: my-app-apk
-        path: ./MyApp/app/build/outputs/apk/debug/app-debug.apk
+        path: output_apk/app-debug.apk
